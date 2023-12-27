@@ -1,7 +1,10 @@
 use std::cmp::max;
+use std::fs;
 use std::io::Read;
+use std::path::Path;
+
 fn main() {
-    let code = "+++{duplicate/1}>+{duplicate/2}";
+    let code = "examples/fibonacci/main.bf";
     let _tape = evaluate(compile(code));
 }
 
@@ -41,6 +44,9 @@ fn evaluate(code: String) -> Vec<u8> {
                 if tape[ptr] != 0 {
                     pc = loop_stack.pop().unwrap() as usize;
                 }
+                else {
+                    loop_stack.pop();
+                }
             },
             _ => {}
         }
@@ -73,18 +79,44 @@ fn evaluate(code: String) -> Vec<u8> {
 
 fn clean(code: &str) -> String {
     let mut clean_code = String::new();
-    for command in code.chars() {
+    let mut last_seen = 0;
+    for (ind, command) in code.chars().enumerate() {
+        if ind < last_seen {
+            continue;
+        }
+        else {
+            last_seen = ind;
+        }
         match command {
-            '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => clean_code.push(command),
+            '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' | '}' => clean_code.push(command),
+            '{' => {
+                // get the text between this and the next }
+                let mut i = ind;
+                while code.chars().nth(i) != Some('}') {
+                    clean_code.push(code.chars().nth(i).unwrap());
+                    last_seen = i;
+                    i += 1;
+                }
+            }
             _ => {}
         }
     }
     clean_code
 }
 
-fn compile(code: &str) -> String {
+fn compile(file: &str) -> String {
+    let mut code = fs::read_to_string(file).expect("Something went wrong reading the file");
+    code = clean(&code);
+    let dir = Path::new(file).parent().expect("Could not get parent directory").display().to_string();
     let mut compiled_code = String::new();
+    let mut last_seen = 0;
     for (ind, command) in code.chars().enumerate() {
+        if ind < last_seen {
+            continue;
+        }
+        else {
+            last_seen = ind;
+        }
         match command {
             '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => compiled_code.push(command),
             '{' => {
@@ -93,17 +125,14 @@ fn compile(code: &str) -> String {
                 let mut pc = ind + 1;
                 while code.chars().nth(pc) != Some('}') {
                     inset_name.push(code.chars().nth(pc).unwrap());
+                    last_seen = pc;
                     pc += 1;
                 }
-                println!("interting code from file: {}", inset_name);
+                println!("inserting code from file: {}", inset_name);
                 // get the inset code from the filename [insert_name].bf
-                let mut inset_code = String::new();
-                let mut inset_file = std::fs::File::open(format!("{}.bf", inset_name)).unwrap();
-                inset_file.read_to_string(&mut inset_code).unwrap();
-                // clean the inset code
-                inset_code = clean(&inset_code);
+                let inset_file = format!("{dir}/{inset_name}.bf");
                 // compile the inset code
-                let inset_compiled_code = compile(&inset_code);
+                let inset_compiled_code = compile(&inset_file);
                 // add the compiled inset code to the compiled code
                 compiled_code.push_str(&inset_compiled_code);
             }
