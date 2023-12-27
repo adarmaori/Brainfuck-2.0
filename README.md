@@ -1,5 +1,5 @@
 # Brainfuck 2.0 / bf++
-This is an extension of the brainfuck syntax that allows the insertion of code from other files in a recursive manner,
+This is an extension of the brainfuck syntax that allows the insertion of code from other files in a recursive way,
 simplifying complex scripts.
 
 ## How to use
