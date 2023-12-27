@@ -33,3 +33,15 @@ not to expect any sort of backwards compatibility** on it. I've added a duplicat
 example snippets that copy the cell below the pointer 1 or 2 cells to the right. We can obviously add as many of
 these as we want, and thus create a sort of function with parameter, with the insertion looking like `{duplicate/N}`
 where N is the parameter. Again, this is a stupid and temporary way to do this, so don't count on it in the long term.
+
+## Guidelines
+Over the last few iterations of this project, I've gathered a few guidelines for writing clean brainfuck
+(yes, seriously). 
+1. Keep your snippets in a single format. This Helped me a lot when Writing the example project.
+The format I settled on and recommend is to call a snippet when the pointer is on its first input, 
+and the snippet should end with the pointer on the first of its outputs (for easy chaining).
+2. Non-destructive: Your snippets should not destroy the cells they consider inputs. I like to start all my snippets 
+with a duplicate statement for each of the inputs so that I don't have to worry about losing them. If you do want to
+destroy the inputs after running the snippet on them, I recommend doing so after the snippet has run
+   (now that I think about it, might be a good idea to add a "destroy" snippet that also copies the results 
+of the last snippet).
