@@ -2,9 +2,11 @@ use std::cmp::max;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
+use regex::Regex;
 
 fn main() {
-    let code = "examples/fibonacci/main.bf";
+    let code = "examples/primes/main.bf";
+    // let code = "test.bf";
     let _tape = evaluate(compile(code));
 }
 
@@ -88,7 +90,7 @@ fn clean(code: &str) -> String {
             last_seen = ind;
         }
         match command {
-            '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' | '}' => clean_code.push(command),
+            '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' | '}' | ')'=> clean_code.push(command),
             '{' => {
                 // get the text between this and the next }
                 let mut i = ind;
@@ -97,7 +99,26 @@ fn clean(code: &str) -> String {
                     last_seen = i;
                     i += 1;
                 }
-            }
+            },
+            '(' => {
+                // get the text between this and the next )
+                clean_code.push(command);
+                let mut i = ind;
+                let mut count = 1;
+                while count > 0 {
+                    i += 1;
+                    if code.chars().nth(i) == Some('(') {
+                        count += 1;
+                    } else if code.chars().nth(i) == Some(')') {
+                        count -= 1;
+                    }
+                    if count == 0 {
+                        break;
+                    }
+                    clean_code.push(code.chars().nth(i).unwrap());
+                }
+                last_seen = i;
+            },
             _ => {}
         }
     }
@@ -105,9 +126,18 @@ fn clean(code: &str) -> String {
 }
 
 fn compile(file: &str) -> String {
-    let mut code = fs::read_to_string(file).expect("Something went wrong reading the file");
-    code = clean(&code);
+    let mut path = file.to_string();
+    if path.starts_with("/") {
+        path.remove(0);
+    }
+    let mut code = fs::read_to_string(path).expect("Something went wrong reading the file");
     let dir = Path::new(file).parent().expect("Could not get parent directory").display().to_string();
+    compile_plain(&code, dir)
+}
+
+
+fn compile_plain(code: &str, dir: String) -> String {
+    let code = clean(&code);
     let mut compiled_code = String::new();
     let mut last_seen = 0;
     for (ind, command) in code.chars().enumerate() {
@@ -135,6 +165,26 @@ fn compile(file: &str) -> String {
                 let inset_compiled_code = compile(&inset_file);
                 // add the compiled inset code to the compiled code
                 compiled_code.push_str(&inset_compiled_code);
+            },
+            '(' => {
+                // get the text between this and the next )
+                let mut num_and_action = String::new();
+                let mut pc = ind + 1;
+                while code.chars().nth(pc) != Some(')') {
+                    num_and_action.push(code.chars().nth(pc).unwrap());
+                    pc += 1;
+                }
+                last_seen = pc;
+                // Find the number in the text
+                let re = Regex::new(r"\d+").unwrap();
+                let num = re.find(&num_and_action).unwrap().as_str().parse::<usize>().unwrap();
+                // Find the rest
+                let action = &num_and_action[num.to_string().len()..];
+                let compiled_action = compile_plain(action, dir.clone());
+                // Add the action num times
+                for _ in 0..num {
+                    compiled_code.push_str(&compiled_action);
+                }
             }
             _ => {}
         }
